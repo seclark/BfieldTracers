@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy import wcs
 import copy
+from scipy import ndimage
 
 def make_wcs(wcs_fn):
     #Set wcs transformation
@@ -86,6 +87,25 @@ def ycutout_data(big_galfa_data, big_galfa_hdr, ystart = 0, ystop = None):
     
     return cutout_galfa_hdr, cutout_galfa_data
     
+def smooth_overnans(map, sig = 15):
+
+    """
+    Takes map with nans, etc set to 0
+    """
+    
+    mask = np.ones(map.shape, np.float_)
+    mask[np.isnan(map)] = 0
+    
+    map_zeroed = copy.copy(map)
+    map_zeroed[mask == 0] = 0
+    
+    blurred_map = ndimage.gaussian_filter(map_zeroed, sigma=sig)
+    blurred_mask = ndimage.gaussian_filter(mask, sigma=sig)
+    
+    map = blurred_map / blurred_mask
+  
+    return map
+    
 nhidata_fn = "/Volumes/DataDavy/GALFA/DR2/NHIMaps/GALFA-HI_VLSR-036+0037kms_NHImap_noTcut.fits"
 nhi_hdr = fits.getheader(nhidata_fn)
 nhi_data = fits.getdata(nhidata_fn)
@@ -117,19 +137,23 @@ ycut_U_hdr, ycut_U_data = ycutout_data(xcut_U_data, xcut_U_hdr, ystart=y_start, 
 xcut_Q_hdr, xcut_Q_data = xcutout_data(Qdata, Qhdr, xstart=x_start, xstop=x_stop)
 ycut_Q_hdr, ycut_Q_data = ycutout_data(xcut_Q_data, xcut_Q_hdr, ystart=y_start, ystop=y_stop)
 
-thetamap = 0.5*np.arctan2(ycut_U_data, ycut_Q_data)
+smoothsig = 60
+smoothQ = smooth_overnans(ycut_Q_data, smoothsig)
+smoothU = smooth_overnans(ycut_U_data, smoothsig)
+
+thetamap = 0.5*np.arctan2(smoothU, smoothQ)
 
 ysize, xsize = thetamap.shape
 X, Y = np.mgrid[0:xsize, 0:ysize]
 
-skipint = 100
+skipint = 50
 
 plt.figure()
 plt.imshow(ycut_nhi_data, cmap="gray_r")
 
-norm = np.sqrt(ycut_U_data**2+ycut_Q_data**2)
-plotU = ycut_U_data/norm
-plotQ = ycut_Q_data/norm
+norm = np.sqrt(smoothU**2+smoothQ**2)
+plotU = smoothU/norm
+plotQ = smoothQ/norm
 plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], 
            plotU[::skipint, ::skipint], plotQ[::skipint, ::skipint], headaxislength=0, headlength=0)
 
