@@ -112,10 +112,10 @@ nhi_data = fits.getdata(nhidata_fn)
 
 w = make_wcs(nhidata_fn)
 
-RAstart = 15 # degrees, in Lazarian paper
-RAstop = 35
-DECstart = 4
-DECstop = 16
+RAstart = 215#15 # degrees, in Lazarian paper
+RAstop = 260#35
+DECstart = 20#4
+DECstop = 36#16
 x_start, y_start = radec_to_xy(RAstop, DECstart, w)
 x_stop, y_stop = radec_to_xy(RAstart, DECstop, w)
 
@@ -137,25 +137,58 @@ ycut_U_hdr, ycut_U_data = ycutout_data(xcut_U_data, xcut_U_hdr, ystart=y_start, 
 xcut_Q_hdr, xcut_Q_data = xcutout_data(Qdata, Qhdr, xstart=x_start, xstop=x_stop)
 ycut_Q_hdr, ycut_Q_data = ycutout_data(xcut_Q_data, xcut_Q_hdr, ystart=y_start, ystop=y_stop)
 
-smoothsig = 60
+planckQUdata_fn = "/Volumes/DataDavy/Planck/HFI_SkyMap_353_2048_R2.00_full_Equ_QUprojected_GALFAallsky.fits"
+planckQU_data = fits.getdata(planckQUdata_fn)
+planckQU_hdr = fits.getheader(planckQUdata_fn)
+planckQdata = -planckQU_data[0, :, :].T
+planckUdata = -planckQU_data[1, :, :].T
+xcut_Q_hdr, xcut_Q_data = xcutout_data(planckQdata, planckQU_hdr, xstart=x_start, xstop=x_stop)
+ycut_Q_hdr, PlanckQ = ycutout_data(xcut_Q_data, xcut_Q_hdr, ystart=y_start, ystop=y_stop)
+xcut_U_hdr, xcut_U_data = xcutout_data(planckUdata, planckQU_hdr, xstart=x_start, xstop=x_stop)
+ycut_U_hdr, PlanckU = ycutout_data(xcut_U_data, xcut_U_hdr, ystart=y_start, ystop=y_stop)
+
+smoothsig = 120
 smoothQ = smooth_overnans(ycut_Q_data, smoothsig)
 smoothU = smooth_overnans(ycut_U_data, smoothsig)
+smoothPlanckQ = smooth_overnans(PlanckQ, smoothsig)
+smoothPlanckU = smooth_overnans(PlanckU, smoothsig)
 
 thetamap = 0.5*np.arctan2(smoothU, smoothQ)
 
 ysize, xsize = thetamap.shape
-X, Y = np.mgrid[0:xsize, 0:ysize]
+Y, X = np.mgrid[0:ysize, 0:xsize]
 
-skipint = 50
+skipint = 500
 
 plt.figure()
 plt.imshow(ycut_nhi_data, cmap="gray_r")
 
+pivot='mid'
+
 norm = np.sqrt(smoothU**2+smoothQ**2)
 plotU = smoothU/norm
 plotQ = smoothQ/norm
-plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], 
-           plotU[::skipint, ::skipint], plotQ[::skipint, ::skipint], headaxislength=0, headlength=0)
+#plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], 
+#           2*plotQ[::skipint, ::skipint], 2*plotU[::skipint, ::skipint], headaxislength=0, headlength=0, pivot=pivot)
+
+#plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], angles=np.degrees(thetamap[::skipint, ::skipint]), 
+#           headaxislength=0, headlength=0)
+
+plancknorm = np.sqrt(smoothPlanckU**2+smoothPlanckQ**2)
+plotPlanckU = smoothPlanckU/plancknorm
+plotPlanckQ = smoothPlanckQ/plancknorm
+thetaplanck = 0.5*np.arctan2(smoothPlanckU, smoothPlanckQ)
+#plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], 
+#           plotPlanckQ[::skipint, ::skipint], plotPlanckU[::skipint, ::skipint], headaxislength=0, headlength=0, pivot=pivot, color="yellow")
+#X = X.ravel()
+#Y = Y.ravel()
+#plotPlanckQ = plotPlanckQ.ravel()
+#plotPlanckU = plotPlanckU.ravel()
+#plt.quiver(X[::skipint], Y[::skipint], 
+#           plotPlanckQ[::skipint], plotPlanckU[::skipint], headaxislength=0, headlength=0, pivot=pivot, color="yellow")
+plt.quiver(X[::skipint, ::skipint], Y[::skipint, ::skipint], X[::skipint, ::skipint], Y[::skipint, ::skipint], 
+           thetaplanck[::skipint, ::skipint], headaxislength=0, headlength=0, pivot=pivot, color="yellow")
+
 
 
 #fig, ax = plt.subplots()
