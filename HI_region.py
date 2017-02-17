@@ -9,6 +9,10 @@ from astropy import wcs
 import copy
 from scipy import ndimage
 
+import sys 
+sys.path.insert(0, '../ACTPol/code')
+import foreground_tools
+
 def make_wcs(wcs_fn):
     #Set wcs transformation
     w = wcs.WCS(wcs_fn, naxis=2)
@@ -105,6 +109,15 @@ def smooth_overnans(map, sig = 15):
     map = blurred_map / blurred_mask
   
     return map
+    
+def make_SC_241_fits_QU():
+    QRHT, URHT, PRHT, theta_rht, int_rhtunsmoothed, QRHTsq, URHTsq = foreground_tools.get_QU_RHT_corrected(region = "SC_241", wlen = 75, smr = 15, smoothRHT = False, sigma = 0, QUmean = False, bwrm = True, galfapixcorr = True, intRHTcorr = False)
+
+    hdr = fits.getheader('/Volumes/DataDavy/GALFA/SC_241/cleaned/SC_241.66_28.675.best.fits')
+    
+    fits.writeto("/Volumes/DataDavy/GALFA/SC_241/thetarht_maps/QRHT_SC_241.66_28.675.best_w75_s15_t70_smoothRHT_False_bwrm_galfapixcorr.fits", QRHT, header=hdr)
+    fits.writeto("/Volumes/DataDavy/GALFA/SC_241/thetarht_maps/URHT_SC_241.66_28.675.best_w75_s15_t70_smoothRHT_False_bwrm_galfapixcorr.fits", URHT, header=hdr)
+    
     
 nhidata_fn = "/Volumes/DataDavy/GALFA/DR2/NHIMaps/GALFA-HI_VLSR-036+0037kms_NHImap_noTcut.fits"
 nhi_hdr = fits.getheader(nhidata_fn)
